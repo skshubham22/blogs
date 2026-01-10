@@ -9,18 +9,12 @@ class UserRegisterForm(UserCreationForm):
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
-    
+        fields = ['username', 'email']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
-
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if User.objects.filter(username=username).exists():
-            raise forms.ValidationError("This username is already taken. Please choose another.")
-        return username
 
 class UserUpdateForm(forms.ModelForm):
     email = forms.EmailField()
