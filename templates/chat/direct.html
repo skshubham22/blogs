@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0 chat-container glass-card">
+                <!-- Header -->
+                <div class="card-header bg-white border-bottom d-flex align-items-center py-3 sticky-top"
+                    style="z-index: 100;">
+                    <a href="javascript:history.back()" class="text-dark me-3"><i class="fas fa-chevron-left"></i></a>
+                    <div class="d-flex align-items-center">
+                        <img src="{{ other_user.profile.image.url }}" class="rounded-circle me-3" width="40" height="40"
+                            style="object-fit: cover;">
+                        <h6 class="mb-0">{{ other_user.username }}</h6>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="card-body chat-box" id="chat-box"
+                    style="height: 60vh; overflow-y: auto; scroll-behavior: smooth;">
+                    {% for msg in chat_messages %}
+                    <div class="message-wrapper {% if msg.sender == user %}sent{% else %}received{% endif %}">
+                        <div class="message-bubble shadow-sm">
+                            {{ msg.content }}
+                            <div class="message-time">{{ msg.timestamp|date:"H:i" }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Footer / Input -->
+                <div class="card-footer bg-white border-top py-3">
+                    <form id="chat-form" class="d-flex align-items-center">
+                        {% csrf_token %}
+                        <input type="text" id="chat-input" class="form-control rounded-pill me-2 px-3"
+                            placeholder="Message..." autocomplete="off">
+                        <button type="submit"
+                            class="btn btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center"
+                            style="width: 40px; height: 40px;">
+                            <i class="fas fa-paper-plane small"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        border-radius: 20px;
+    }
+
+    .chat-box {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: #f8f9fa;
+    }
+
+    [data-theme="dark"] .chat-box {
+        background: #1a1a1a;
+    }
+
+    .message-wrapper {
+        display: flex;
+        width: 100%;
+    }
+
+    .message-wrapper.sent {
+        justify-content: flex-end;
+    }
+
+    .message-wrapper.received {
+        justify-content: flex-start;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 12px 18px;
+        border-radius: 22px;
+        font-size: 0.95rem;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .message-bubble:hover {
+        transform: scale(1.02);
+    }
+
+    .sent .message-bubble {
+        background: linear-gradient(45deg, #0095f6, #00c6ff);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .received .message-bubble {
+        background: #efefef;
+        color: #262626;
+        border-bottom-left-radius: 4px;
+    }
+
+    [data-theme="dark"] .received .message-bubble {
+        background: #363636;
+        color: white;
+    }
+
+    [data-theme="dark"] .card-header,
+    [data-theme="dark"] .card-footer {
+        background: #1a1a1a !important;
+        border-color: #333 !important;
+    }
+
+    [data-theme="dark"] .text-dark {
+        color: #fff !important;
+    }
+
+    .message-time {
+        font-size: 0.65rem;
+        opacity: 0.6;
+        margin-top: 4px;
+        text-align: right;
+    }
+
+    #chat-input {
+        background: #fafafa;
+        border: 1px solid #dbdbdb;
+    }
+
+    [data-theme="dark"] #chat-input {
+        background: #262626;
+        border-color: #444;
+        color: white;
+    }
+
+    .glass-card {
+        overflow: hidden;
+        border-radius: 24px !important;
+    }
+</style>
+
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+
+    // Scroll to bottom initially
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    function appendMessage(body, timestamp, type) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${type}`;
+        wrapper.innerHTML = `
+            <div class="message-bubble">
+                ${body}
+                <div class="message-time">${timestamp}</div>
+            </div>
+        `;
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const body = chatInput.value.trim();
+        if (!body) return;
+
+        const formData = new FormData();
+        formData.append('body', body);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'api-send-message' other_user.username %}", {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    appendMessage(data.body, data.timestamp, 'sent');
+                    chatInput.value = '';
+                }
+            });
+    });
+
+    // Polling for new messages
+    function pollMessages() {
+        fetch("{% url 'api-get-messages' other_user.username %}?mode=unread")
+            .then(response => response.json())
+            .then(data => {
+                if (data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        appendMessage(msg.body, msg.timestamp, 'received');
+                    });
+                }
+            });
+    }
+
+    setInterval(pollMessages, 3000);
+</script>
+{% endblock %}

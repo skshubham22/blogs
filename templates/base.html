@@ -1,0 +1,704 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BlogVerse{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Navigation -->
+    {% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            {% if request.path != '/' %}
+            <a href="{% if request.GET.source == 'search' and request.session.last_user_search %}{% url 'search-users' %}?q={{ request.session.last_user_search }}{% else %}javascript:history.back(){% endif %}"
+                id="back-arrow" class="btn btn-link p-0 me-3">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            {% endif %}
+            <button id="theme-toggle" class="btn btn-link p-0 me-3" title="Change Theme">
+                <i class="fas fa-palette" id="theme-icon"></i>
+            </button>
+            <a class="navbar-brand" href="{% url 'blog-home' %}">
+                <i class="fas fa-blog"></i> <span class="d-none d-sm-inline">Blogs</span>
+            </a>
+            <!-- Chat Dropdown Trigger -->
+            <div class="dropdown me-3 order-lg-last">
+                <a href="javascript:void(0)" class="position-relative text-decoration-none" id="chatDropdownTrigger"
+                    data-bs-toggle="dropdown" aria-expanded="false" onclick="fetchConversations()">
+                    <i class="fas fa-paper-plane fs-5"></i>
+                    <span id="chat-badge"
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                        style="font-size: 0.6rem;">
+                        NEW
+                    </span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow p-0" aria-labelledby="chatDropdownTrigger"
+                    style="width: 320px; max-height: 450px; overflow-y: auto;" id="chatDropdownMenu">
+                    <li class="p-2 border-bottom d-flex justify-content-between align-items-center dropdown-header"
+                        style="background-color: var(--search-bg) !important;">
+                        <h6 class="mb-0 fw-bold">Messages</h6>
+                        <a href="{% url 'inbox' %}" class="small text-decoration-none">See All</a>
+                    </li>
+                    <div id="chat-dropdown-list">
+                        <!-- JS will populate this -->
+                        <li class="p-4 text-center text-muted">
+                            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                            <br><small>Loading conversations...</small>
+                        </li>
+                    </div>
+                </ul>
+            </div>
+
+            <!-- Floating Chat Box Container -->
+            <div id="floating-chat-box" class="card shadow d-none"
+                style="position: fixed; bottom: 0; right: 20px; width: 320px; height: 400px; z-index: 1050; border-radius: 10px 10px 0 0;">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2"
+                    style="cursor: pointer;" onclick="toggleChatBox()">
+                    <div class="d-flex align-items-center">
+                        <img id="floating-chat-header-img" src="" class="rounded-circle me-2" width="30" height="30"
+                            style="object-fit: cover;">
+                        <span id="floating-chat-header-username" class="fw-bold">Username</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm text-white p-0 me-2"><i class="fas fa-minus"></i></button>
+                        <button class="btn btn-sm text-white p-0" onclick="event.stopPropagation(); closeChatBox()"><i
+                                class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="card-body p-0 d-flex flex-column" style="height: 350px;">
+                    <div id="floating-chat-messages-area" class="flex-grow-1 p-3"
+                        style="overflow-y: auto; background-color: #f8f9fa;">
+                        <!-- Messages go here -->
+                    </div>
+                    <div class="p-2 border-top bg-white">
+                        <div class="input-group">
+                            <input type="text" id="floating-chat-input"
+                                class="form-control form-control-sm border-0 bg-light" placeholder="Type a message..."
+                                style="box-shadow: none;">
+                            <button class="btn btn-primary btn-sm rounded-circle ms-2" onclick="sendChatMessage()"
+                                style="width: 35px; height: 35px;">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications Dropdown -->
+            <div class="dropdown me-3 order-lg-last">
+                <a href="#" class="position-relative text-decoration-none" id="notificationMenu"
+                    data-bs-toggle="dropdown">
+                    <i class="fas fa-bell fs-5"></i>
+                    <span id="notification-badge"
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_notifications_count == 0 %}d-none{% endif %}"
+                        style="font-size: 0.6rem;">
+                        {{ unread_notifications_count }}
+                    </span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationMenu"
+                    style="width: 300px; max-height: 400px; overflow-y: auto;">
+                    <li>
+                        <h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                            Notifications
+                        </h6>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <div id="notification-list">
+                        {% for notification in latest_notifications %}
+                        <li>
+                            <a class="dropdown-item {% if not notification.is_read %}bg-light fw-bold{% endif %} border-bottom py-2"
+                                href="{% url 'mark-notification-read' notification.pk %}">
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ notification.sender.profile.image.url }}" class="rounded-circle me-2"
+                                        width="30" height="30">
+                                    <div style="white-space: normal;">
+                                        <p class="mb-0 small" style="line-height: 1.2;">{{ notification.content
+                                            }}</p>
+                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                            {{ notification.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li class="text-center py-3 text-muted small">No notifications</li>
+                        {% endfor %}
+                    </div>
+                </ul>
+            </div>
+
+            <!-- User Profile Dropdown -->
+            <div class="dropdown order-lg-last">
+                <button class="btn dropdown-toggle d-flex align-items-center p-1 px-2 rounded-pill shadow-sm border-0"
+                    type="button" id="userMenu" data-bs-toggle="dropdown">
+                    <img src="{{ user.profile.image.url }}" alt="Profile" class="rounded-circle" width="28" height="28">
+                    <span class="d-none d-md-inline ms-2 small fw-bold">{{ user.username }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                    <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li>
+                        <form action="{% url 'logout' %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Mobile Toggler -->
+            <button class="navbar-toggler ms-2 order-lg-last" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Navbar Links & Search -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto align-items-lg-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'blog-home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'blog-about' %}">About</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                            data-bs-toggle="dropdown">
+                            Categories
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'blog-home' %}">All Categories</a></li>
+                            {% for category in categories %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'blog-home' %}?category={{ category.id }}">
+                                    {{ category.name }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    <!-- User Search Form -->
+                    <li class="nav-item ms-lg-4 position-relative">
+                        <form class="d-flex" action="{% url 'search-users' %}" method="GET" id="user-search-form">
+                            <div class="input-group">
+                                <input class="form-control border-0 rounded-start-pill ps-3" type="search" name="q"
+                                    placeholder="Find users..." aria-label="Search Users" autocomplete="off"
+                                    id="user-search-input" style="min-width: 200px;">
+                                <button class="btn border-0 rounded-end-pill pe-3" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <!-- Search Dropdown Results -->
+                        <div id="search-results-dropdown" class="dropdown-menu shadow w-100"
+                            style="display: none; top: 100%;">
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Messages -->
+    <div class="container mt-3">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% if user.is_authenticated %}
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>BlogVerse</h5>
+                    <p>A platform for sharing your thoughts and ideas with the world.</p>
+                    <h8>made with love by shubham &hearts; &#x2764;&#xfe0f;</h8>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; {% now "Y" %} BlogVerse. All rights reserved.</p>
+                    <div class="social-links">
+                        <a href="#" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    {% endif %}
+
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    {% if user.is_authenticated and request.path != '/' %}
+    <a href="javascript:history.back()" class="btn-floating-left" id="floating-back" title="Go Back">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <a href="{% url 'post-create' %}" class="btn-floating" title="New Post">
+        <i class="fas fa-plus"></i>
+    </a>
+    <a href="javascript:void(0)" class="btn-floating btn-bot" onclick="openBot()" title="Chat Bot"
+        style="bottom: 110px; background: linear-gradient(45deg, #6e8efb, #a777e3);">
+        <i class="fas fa-robot"></i>
+    </a>
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+
+    <script>
+        // Theme Switcher Logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themes = ['aesthetic', 'dark', 'light'];
+        let currentThemeIndex = 0;
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+
+            const navbar = document.querySelector('.navbar');
+            if (!navbar) return;
+
+            if (theme === 'light') {
+                navbar.classList.remove('navbar-dark');
+                navbar.classList.add('navbar-light');
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                navbar.classList.remove('navbar-light');
+                navbar.classList.add('navbar-dark');
+                if (theme === 'dark') {
+                    themeIcon.className = 'fas fa-moon';
+                } else {
+                    themeIcon.className = 'fas fa-palette';
+                }
+            }
+        }
+
+        // Initialize theme from storage
+        const savedTheme = localStorage.getItem('theme') || 'aesthetic';
+        currentThemeIndex = themes.indexOf(savedTheme);
+        setTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            setTheme(themes[currentThemeIndex]);
+        });
+
+        // Auto-refresh the page when navigating back to ensure fresh data
+        window.addEventListener("pageshow", function (event) {
+            var historyTraversal = event.persisted ||
+                (typeof window.performance != "undefined" &&
+                    window.performance.navigation.type === 2);
+            if (historyTraversal) {
+                window.location.reload();
+            }
+        });
+    </script>
+    {% if user.is_authenticated %}
+    <script>
+        let activeChatUser = null;
+        let chatBoxOpen = false;
+        const BOT_NAME = "BlogBot";
+        const BOT_IMG = "/media/bot_avatar.png";
+
+        const INBOX_URL = "{% url 'inbox' %}";
+        const NOTIFICATIONS_API_URL = "{% url 'api-notifications' %}";
+        const USER_SEARCH_API_URL = "{% url 'api-user-search' %}";
+        const CONVERSATIONS_API_URL = "{% url 'api-get-conversations' %}";
+
+        function openChatBox(username, imgUrl) {
+            activeChatUser = username;
+            chatBoxOpen = true;
+            document.getElementById('floating-chat-box').classList.remove('d-none');
+            document.getElementById('floating-chat-header-username').innerText = username;
+            document.getElementById('floating-chat-header-img').src = imgUrl;
+            fetchMessages(username);
+        }
+
+        function closeChatBox() {
+            chatBoxOpen = false;
+            document.getElementById('floating-chat-box').classList.add('d-none');
+            activeChatUser = null;
+        }
+
+        function toggleChatBox() {
+            const body = document.querySelector('#floating-chat-box .card-body');
+            const icon = document.querySelector('#floating-chat-box .fa-minus, #floating-chat-box .fa-plus');
+            if (body.classList.contains('d-none')) {
+                body.classList.remove('d-none');
+                document.getElementById('floating-chat-box').style.height = '400px';
+                icon.className = 'fas fa-minus';
+            } else {
+                body.classList.add('d-none');
+                document.getElementById('floating-chat-box').style.height = 'auto';
+                icon.className = 'fas fa-plus';
+            }
+        }
+
+        function openBot() {
+            activeChatUser = 'BOT';
+            chatBoxOpen = true;
+            document.getElementById('floating-chat-box').classList.remove('d-none');
+            document.getElementById('floating-chat-header-username').innerText = BOT_NAME;
+            document.getElementById('floating-chat-header-img').src = BOT_IMG;
+
+            const area = document.getElementById('floating-chat-messages-area');
+            area.innerHTML = '';
+            appendFloatingMessage(area, "Hello! I'm BlogBot. How can I help you today?", false, "Now");
+
+            const options = document.createElement('div');
+            options.className = 'mt-3 d-flex flex-wrap gap-2';
+            options.innerHTML = `
+                <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="botSuggestFriends()">Talk to Friends</button>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="botHowToPost()">How to Post?</button>
+            `;
+            area.appendChild(options);
+            scrollFloatingToBottom();
+        }
+
+        function botSuggestFriends() {
+            const area = document.getElementById('floating-chat-messages-area');
+            appendFloatingMessage(area, "Let me check your friends...", false, "Now");
+            fetch(CONVERSATIONS_API_URL)
+                .then(r => r.json())
+                .then(data => {
+                    const friends = data.conversations.filter(c => c.username !== BOT_NAME);
+                    if (friends.length > 0) {
+                        let html = '<div class="list-group mt-2">';
+                        friends.slice(0, 3).forEach(c => {
+                            html += `<button class="list-group-item list-group-item-action border-0 py-2 small d-flex align-items-center" onclick="openChatBox('${c.username}', '${c.image}')">
+                                <img src="${c.image}" class="rounded-circle me-2" width="20" height="20">
+                                ${c.username}
+                            </button>`;
+                        });
+                        html += '</div>';
+                        const div = document.createElement('div');
+                        div.innerHTML = html;
+                        area.appendChild(div);
+                    } else {
+                        appendFloatingMessage(area, "You don't have any chats yet. Search for users in the navbar!", false, "Now");
+                    }
+                    scrollFloatingToBottom();
+                });
+        }
+
+        function botHowToPost() {
+            const area = document.getElementById('floating-chat-messages-area');
+            appendFloatingMessage(area, "To create a post, click the floating '+' button at the bottom right of your screen!", false, "Now");
+            scrollFloatingToBottom();
+        }
+
+        function fetchConversations() {
+            const list = document.getElementById('chat-dropdown-list');
+            fetch(CONVERSATIONS_API_URL)
+                .then(r => {
+                    if (!r.ok) throw new Error('Network response was not ok');
+                    return r.json();
+                })
+                .then(data => {
+                    renderConversations(data.conversations);
+                })
+                .catch(err => {
+                    console.error('Error fetching conversations:', err);
+                    renderConversations([]); // Clear spinner even if error
+                });
+        }
+
+        function renderConversations(conversations) {
+            const list = document.getElementById('chat-dropdown-list');
+            let html = `
+                <li>
+                    <a class="dropdown-item border-bottom py-2 bg-light" href="javascript:void(0)" onclick="openBot()">
+                        <div class="d-flex align-items-center">
+                            <div class="position-relative">
+                                <img src="${BOT_IMG}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;">
+                                <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-light rounded-circle" style="transform: translate(-30%, -30%);"></span>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small fw-bold text-primary">${BOT_NAME} <i class="fas fa-check-circle fa-xs"></i></span>
+                                    <small class="text-muted" style="font-size: 0.7rem;">Online</small>
+                                </div>
+                                <p class="mb-0 small text-truncate text-muted">How can I help you today?</p>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+            `;
+
+            if (conversations.length > 0) {
+                conversations.forEach(c => {
+                    const unreadClass = c.is_read ? '' : 'bg-light font-weight-bold';
+                    html += `
+                        <li>
+                            <a class="dropdown-item ${unreadClass} border-bottom py-2" href="javascript:void(0)" onclick="openChatBox('${c.username}', '${c.image}')">
+                                <div class="d-flex align-items-center">
+                                    <img src="${c.image}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="small fw-bold">${c.username}</span>
+                                            <small class="text-muted" style="font-size: 0.7rem;">${c.timestamp}</small>
+                                        </div>
+                                        <p class="mb-0 small text-truncate text-muted">${c.last_message}</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                    `;
+                });
+            }
+            list.innerHTML = html;
+        }
+
+        const searchInput = document.getElementById('user-search-input');
+        const searchDropdown = document.getElementById('search-results-dropdown');
+
+        if (searchInput) {
+            searchInput.addEventListener('focus', showSearchHistory);
+            searchInput.addEventListener('click', showSearchHistory);
+
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                    searchDropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function showSearchHistory() {
+            fetch(USER_SEARCH_API_URL)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.history && data.history.length > 0) {
+                        let html = '<h6 class="dropdown-header">Recent Searches</h6>';
+                        data.history.forEach(query => {
+                            html += `<li><a class="dropdown-item py-2" href="{% url 'search-users' %}?q=${encodeURIComponent(query)}&source=search"><i class="fas fa-history me-2 text-muted"></i>${query}</a></li>`;
+                        });
+                        searchDropdown.innerHTML = html;
+                        searchDropdown.style.display = 'block';
+                    } else {
+                        searchDropdown.style.display = 'none';
+                    }
+                });
+        }
+
+        function checkUnread() {
+            // Check for unread chat messages via API
+            fetch(CONVERSATIONS_API_URL)
+                .then(r => r.json())
+                .then(data => {
+                    const hasUnread = data.conversations.some(c => !c.is_read);
+                    const badge = document.getElementById('chat-badge');
+                    if (badge) {
+                        if (hasUnread) {
+                            badge.classList.remove('d-none');
+                        } else {
+                            badge.classList.add('d-none');
+                        }
+                    }
+
+                    // If the dropdown is currently open, refresh it as well
+                    const dropdown = document.getElementById('chatDropdownMenu');
+                    if (dropdown && dropdown.classList.contains('show')) {
+                        renderConversations(data.conversations);
+                    }
+                });
+
+            // Check for new notifications
+            fetch(NOTIFICATIONS_API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    updateNotificationUI(data);
+                });
+        }
+
+        function fetchMessages(username) {
+            const area = document.getElementById('floating-chat-messages-area');
+            fetch(`/chat/api/get_messages/${username}/?mode=history`)
+                .then(res => res.json())
+                .then(data => {
+                    area.innerHTML = '';
+                    if (data.messages.length === 0) {
+                        area.innerHTML = '<div class="text-center text-muted mt-5"><small>No messages yet.</small></div>';
+                    }
+                    data.messages.forEach(msg => {
+                        appendFloatingMessage(area, msg.body, msg.is_me, msg.timestamp);
+                    });
+                    scrollFloatingToBottom();
+                });
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('floating-chat-input');
+            const content = input.value.trim();
+            if (!content || !activeChatUser) return;
+
+            if (activeChatUser === 'BOT') {
+                processBotQuery(content);
+                input.value = '';
+                return;
+            }
+
+            // Clear input immediately
+            input.value = '';
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const formData = new FormData();
+            formData.append('body', content);
+
+            fetch(`/chat/api/send_message/${activeChatUser}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        const area = document.getElementById('floating-chat-messages-area');
+                        if (area.querySelector('.text-center')) area.innerHTML = '';
+                        appendFloatingMessage(area, data.body, true, data.timestamp);
+                        scrollFloatingToBottom();
+                    }
+                });
+        }
+
+        function processBotQuery(query) {
+            const area = document.getElementById('floating-chat-messages-area');
+            appendFloatingMessage(area, query, true, "Now");
+
+            setTimeout(() => {
+                const q = query.toLowerCase();
+                if (q.includes('hello') || q.includes('hi')) {
+                    appendFloatingMessage(area, "Hello! How can I assist you today?", false, "Now");
+                } else if (q.includes('friend') || q.includes('chat') || q.includes('talk')) {
+                    botSuggestFriends();
+                } else if (q.includes('post') || q.includes('create')) {
+                    botHowToPost();
+                } else {
+                    appendFloatingMessage(area, "I'm not sure I understand. I can help you find friends to chat with or show you how to post!", false, "Now");
+                }
+                scrollFloatingToBottom();
+            }, 500);
+        }
+
+        function appendFloatingMessage(area, text, isMe, time) {
+            const div = document.createElement('div');
+            div.className = `d-flex mb-3 ${isMe ? 'justify-content-end' : 'justify-content-start'}`;
+            div.innerHTML = `
+            <div class="${isMe ? 'bg-primary text-white' : 'bg-white text-dark shadow-sm'} p-2 rounded px-3" style="max-width: 80%; border-radius: 18px !important;">
+                <p class="mb-0 small text-break">${text}</p>
+                <small class="${isMe ? 'text-white-50' : 'text-muted'} d-block text-end" style="font-size: 0.6rem;">${time}</small>
+            </div>
+        `;
+            area.appendChild(div);
+        }
+
+        function scrollFloatingToBottom() {
+            const area = document.getElementById('floating-chat-messages-area');
+            area.scrollTop = area.scrollHeight;
+        }
+
+        document.getElementById('floating-chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+
+        function updateNotificationUI(data) {
+            const badge = document.getElementById('notification-badge');
+            const list = document.getElementById('notification-list');
+
+            if (data.unread_count > 0) {
+                badge.innerText = data.unread_count;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+
+            if (data.notifications.length > 0) {
+                let html = '';
+                data.notifications.forEach(n => {
+                    const readClass = n.is_read ? '' : 'bg-light fw-bold';
+                    const readUrl = `{% url 'mark-notification-read' 0 %}`.replace('0', n.pk);
+                    html += `
+                        <li>
+                            <a class="dropdown-item ${readClass} border-bottom py-2" href="${readUrl}">
+                                <div class="d-flex align-items-center">
+                                    <img src="${n.sender_image}" class="rounded-circle me-2" width="30" height="30">
+                                    <div style="white-space: normal;">
+                                        <p class="mb-0 small" style="line-height: 1.2;">${n.content}</p>
+                                        <small class="text-muted" style="font-size: 0.7rem;">${n.created_at_formatted}</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                    `;
+                });
+                list.innerHTML = html;
+            } else {
+                list.innerHTML = '<li class="text-center py-3 text-muted small">No notifications</li>';
+            }
+        }
+
+        setInterval(() => {
+            if (activeChatUser && activeChatUser !== 'BOT' && chatBoxOpen && !document.getElementById('floating-chat-box').classList.contains('d-none')) {
+                fetch(`/chat/api/get_messages/${activeChatUser}/?mode=unread`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.messages && data.messages.length > 0) {
+                            const area = document.getElementById('floating-chat-messages-area');
+                            if (area.querySelector('.text-center')) area.innerHTML = '';
+                            data.messages.forEach(msg => {
+                                appendFloatingMessage(area, msg.body, false, msg.timestamp);
+                            });
+                            scrollFloatingToBottom();
+                        }
+                    });
+            }
+        }, 3000);
+
+        setInterval(checkUnread, 10000);
+        checkUnread();
+    </script>
+    {% endif %}
+</body>
+
+</html>

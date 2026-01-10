@@ -1,0 +1,228 @@
+<!-- templates/blog_app/post_detail.html -->
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-12 col-lg-8">
+        <!-- Post Content -->
+        <article class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            {% if object.image %}
+            <div class="post-detail-img-container">
+                <img src="{{ object.image.url }}" class="w-100" alt="{{ object.title }}"
+                    style="max-height: 500px; object-fit: cover;">
+            </div>
+            {% endif %}
+
+            <div class="card-body p-3 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="author-info d-flex align-items-center">
+                        <img src="{{ object.author.profile.image.url }}" alt="{{ object.author.username }}"
+                            class="rounded-circle me-3 shadow-sm" width="48" height="48" style="object-fit: cover;">
+                        <div>
+                            <h6 class="mb-0 fw-bold">
+                                <a href="{% url 'profile-user' object.author.username %}"
+                                    class="text-decoration-none text-dark-mode">{{ object.author.username }}</a>
+                            </h6>
+                            <small class="text-muted">{{ object.date_posted|date:"F d, Y" }}</small>
+                        </div>
+                    </div>
+
+                    {% if object.author == user %}
+                    <div class="dropdown">
+                        <button class="btn btn-light btn-sm rounded-circle shadow-sm" type="button"
+                            data-bs-toggle="dropdown" style="width: 35px; height: 35px;">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                            <li><a class="dropdown-item" href="{% url 'post-update' object.pk %}"><i
+                                        class="fas fa-edit me-2"></i> Edit</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'post-delete' object.pk %}"><i
+                                        class="fas fa-trash me-2"></i> Delete</a></li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <h1 class="display-6 fw-bold mb-3">{{ object.title }}</h1>
+
+                {% if object.category %}
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 mb-4">{{ object.category.name }}</span>
+                {% endif %}
+
+                <div class="post-content mb-3 lead fs-6" style="line-height: 1.8; color: var(--text-color);">
+                    {{ object.content|linebreaks }}
+                </div>
+
+                {% if object.tagged_users.all %}
+                <div class="tagged-users mb-5">
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-2">Tagged:</span>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for tagged_user in object.tagged_users.all %}
+                        <a href="{% url 'profile-user' tagged_user.username %}"
+                            class="btn btn-sm btn-light-soft border-0 shadow-none rounded-pill d-flex align-items-center py-1 ps-1 pe-2">
+                            <img src="{{ tagged_user.profile.image.url }}" class="rounded-circle me-1" width="22"
+                                height="22" style="object-fit: cover;">
+                            <span class="small fw-bold">{{ tagged_user.username }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Media (Video/Carousel) -->
+                {% if object.video %}
+                <div class="mb-5 rounded-4 overflow-hidden shadow-sm">
+                    <video width="100%" height="auto" controls class="d-block">
+                        <source src="{{ object.video.url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                {% endif %}
+
+                {% if object.additional_images.all %}
+                <div id="postImageCarousel" class="carousel slide mb-5 shadow-sm rounded-4 overflow-hidden"
+                    data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for post_image in object.additional_images.all %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ post_image.image.url }}" class="d-block w-100" alt="Additional image"
+                                style="max-height: 600px; object-fit: cover;">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if object.additional_images.count > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#postImageCarousel"
+                        data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon p-3 bg-dark bg-opacity-25 rounded-circle"
+                            aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#postImageCarousel"
+                        data-bs-slide="next">
+                        <span class="carousel-control-next-icon p-3 bg-dark bg-opacity-25 rounded-circle"
+                            aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-between align-items-center mb-2 pt-4 border-top">
+                    <button class="btn btn-link p-0 text-decoration-none like-btn d-flex align-items-center gap-2"
+                        data-post-id="{{ object.pk }}" style="color: inherit;">
+                        <i
+                            class="fas fa-heart fa-lg {% if user in object.likes.all %}text-danger{% else %}text-muted{% endif %}"></i>
+                        <span class="fw-bold"><span class="like-count">{{ object.total_likes }}</span> Likes</span>
+                    </button>
+
+                    <div class="share-btns">
+                        <button class="btn btn-light btn-sm rounded-circle me-2" title="Share"><i
+                                class="fas fa-share-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Comments Section -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" id="comments">
+            <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0">Comments ({{ object.comments.count }})</h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Comment Form -->
+                {% if user.is_authenticated %}
+                <form method="POST" action="{% url 'add-comment' object.pk %}" class="mb-5 bg-light p-3 rounded-4">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ comment_form.content|as_crispy_field }}
+                    </div>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Post Comment</button>
+                </form>
+                {% else %}
+                <div class="alert bg-primary-subtle text-primary border-0 rounded-4 mb-5">
+                    Please <a href="{% url 'login' %}" class="fw-bold">login</a> to join the conversation.
+                </div>
+                {% endif %}
+
+                <!-- Comments List -->
+                <div class="comments-list d-flex flex-column gap-3">
+                    {% for comment in object.comments.all %}
+                    <div class="comment-item">
+                        <div class="d-flex gap-3">
+                            <img src="{{ comment.author.profile.image.url }}" alt="{{ comment.author.username }}"
+                                class="rounded-circle shadow-sm" width="36" height="36" style="object-fit: cover;">
+                            <div class="flex-grow-1 bg-light-soft p-3 rounded-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold small">
+                                        <a href="{% url 'profile-user' comment.author.username %}"
+                                            class="text-decoration-none text-dark-mode">{{ comment.author.username
+                                            }}</a>
+                                    </h6>
+                                    <small class="text-muted" style="font-size: 0.7rem;">{{
+                                        comment.date_posted|timesince }} ago</small>
+                                </div>
+                                <p class="mb-0 small text-dark-mode opacity-90">{{ comment.content }}</p>
+
+                                <div class="d-flex mt-2 gap-3 align-items-center">
+                                    {% if user == comment.author and comment.is_within_edit_window %}
+                                    <a href="{% url 'comment-update' comment.pk %}"
+                                        class="text-muted small text-decoration-none" title="Edit">
+                                        <i class="fas fa-edit fa-xs"></i> <span style="font-size: 0.65rem;">Edit</span>
+                                    </a>
+                                    {% endif %}
+
+                                    {% if user == comment.author or user == object.author %}
+                                    <a href="{% url 'comment-delete' comment.pk %}"
+                                        class="text-danger small text-decoration-none" title="Delete">
+                                        <i class="fas fa-trash-alt fa-xs"></i> <span
+                                            style="font-size: 0.65rem;">Delete</span>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4 opacity-50">
+                        <i class="fas fa-comment shadow-sm fa-2x mb-2"></i>
+                        <p class="small">Be the first to comment!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function () {
+        $('.like-btn').click(function () {
+            var postId = $(this).data('post-id');
+            var button = $(this);
+
+            $.ajax({
+                url: '/post/' + postId + '/like/',
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function (response) {
+                    if (response.liked) {
+                        button.find('i').addClass('text-danger');
+                    } else {
+                        button.find('i').removeClass('text-danger');
+                    }
+                    button.find('.like-count').text(response.total_likes);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

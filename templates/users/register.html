@@ -1,0 +1,67 @@
+<!-- templates/users/register.html -->
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Create Account</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Sign Up</button>
+                    </div>
+                </form>
+                <div class="border-top pt-3 mt-3 text-center">
+                    <small class="text-muted">
+                        Already have an account? <a href="{% url 'login' %}" class="text-decoration-none">login </a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const usernameField = document.querySelector('#div_id_username input');
+    const submitBtn = document.querySelector('button[type="submit"]');
+
+    if (usernameField) {
+        usernameField.addEventListener('keyup', (e) => {
+            const username = e.target.value;
+            if (username.length > 0) {
+                fetch(`{% url "validate-username" %}?username=${username}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const existingError = document.getElementById('username-error');
+                        if (existingError) {
+                            existingError.remove();
+                        }
+
+                        if (data.is_taken) {
+                            usernameField.classList.add('is-invalid');
+                            const errorDiv = document.createElement('div');
+                            errorDiv.id = 'username-error';
+                            errorDiv.classList.add('invalid-feedback');
+                            errorDiv.style.display = 'block';
+                            errorDiv.innerHTML = `<strong>${data.error_message}</strong>`;
+                            usernameField.parentNode.appendChild(errorDiv);
+                            submitBtn.disabled = true;
+                        } else {
+                            usernameField.classList.remove('is-invalid');
+                            usernameField.classList.add('is-valid');
+                            submitBtn.disabled = false;
+                        }
+                    });
+            }
+        });
+    }
+</script>
+{% endblock %}

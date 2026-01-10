@@ -1,0 +1,347 @@
+<!-- templates/users/profile.html -->
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<style>
+    :root {
+        --ig-bg: #fafafa;
+        --ig-border: #dbdbdb;
+        --ig-text: #262626;
+        --ig-link: #00376b;
+    }
+
+    .profile-container {
+        max-width: 935px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+
+    .profile-header {
+        margin-bottom: 44px;
+    }
+
+    .profile-image-container {
+        flex-shrink: 0;
+    }
+
+    .profile-image {
+        width: 150px;
+        height: 150px;
+        border: 1px solid var(--ig-border);
+        padding: 4px;
+        background: #fff;
+    }
+
+    @media (max-width: 768px) {
+        .profile-image {
+            width: 77px;
+            height: 77px;
+        }
+
+        .profile-header {
+            margin-bottom: 24px;
+        }
+
+        .profile-username {
+            font-size: 1.5rem !important;
+        }
+    }
+
+    .stat-item {
+        margin-right: 40px;
+        font-size: 1rem;
+    }
+
+    .stat-count {
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+    .profile-bio {
+        margin-top: 20px;
+        line-height: 1.5;
+    }
+
+    .profile-full-name {
+        font-weight: 600;
+        display: block;
+    }
+
+    .post-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+        margin-top: 50px;
+        border-top: 1px solid var(--ig-border);
+        padding-top: 0;
+    }
+
+    @media (max-width: 768px) {
+        .post-grid {
+            gap: 3px;
+        }
+    }
+
+    .post-item {
+        position: relative;
+        width: 100%;
+        padding-top: 100%;
+        /* square aspect ratio */
+        background-color: #efefef;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .post-item img,
+    .post-item .post-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .post-item:hover img {
+        transform: scale(1.05);
+        filter: brightness(0.8);
+    }
+
+    .post-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 2;
+    }
+
+    .post-item:hover .post-overlay {
+        opacity: 1;
+    }
+
+    .post-placeholder {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        padding: 10px;
+        text-align: center;
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        color: white;
+    }
+
+    .nav-tabs {
+        justify-content: center;
+        border-bottom: none;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: #8e8e8e;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        font-weight: 600;
+        padding: 15px 0;
+        margin: 0 25px;
+        border-top: 1px solid transparent;
+        margin-top: -1px;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--ig-text);
+        border-top: 1px solid var(--ig-text);
+        background: none;
+    }
+
+    @media (max-width: 768px) {
+        .stat-item {
+            margin-right: 0;
+            flex: 1;
+            text-align: center;
+            font-size: 0.9rem;
+            /* Smaller font for stats */
+        }
+
+        .stats-row {
+            border-top: 1px solid var(--ig-border);
+            padding: 10px 0;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        /* Ensure tabs don't overflow */
+        .nav-tabs .nav-link {
+            margin: 0 10px;
+            font-size: 0.7rem;
+            padding: 10px 0;
+        }
+
+        .profile-container {
+            padding: 15px 0;
+            /* Remove side padding on mobile for edge-to-edge feel */
+            max-width: 100%;
+        }
+
+        .profile-header {
+            padding: 0 15px;
+            /* Keep header padded */
+        }
+    }
+</style>
+
+<div class="profile-container">
+    <!-- Header Section -->
+    <div class="profile-header d-flex flex-column flex-md-row align-items-center align-items-md-start">
+        <div class="profile-image-container mb-3 mb-md-0 me-md-5">
+            <img src="{{ profile_user.profile.image.url }}" alt="Profile Picture" class="rounded-circle profile-image">
+        </div>
+
+        <div class="flex-grow-1">
+            <div class="d-flex flex-column flex-md-row align-items-center mb-3">
+                <h2 class="profile-username h4 mb-0 me-md-4 mb-3 mb-md-0 font-weight-light">{{ profile_user.username }}
+                </h2>
+
+                <div class="d-flex gap-2">
+                    {% if is_own_profile %}
+                    <a href="{% url 'edit-profile' %}" class="btn btn-outline-secondary btn-sm px-3 fw-bold">Edit
+                        Profile</a>
+                    <a href="{% url 'settings' %}" class="btn btn-light btn-sm"><i class="fas fa-cog"></i></a>
+                    {% else %}
+                    <!-- Message Button (Always available) -->
+                    <a href="{% url 'direct-message' profile_user.username %}"
+                        class="btn btn-outline-primary btn-sm px-4 fw-bold">Message</a>
+
+                    <!-- Friend Actions -->
+                    {% if friendship_status == 'accepted' %}
+                    <button class="btn btn-light btn-sm" title="Friends"><i class="fas fa-user-check"></i></button>
+                    {% elif friendship_status == 'pending' %}
+                    <button class="btn btn-secondary btn-sm px-4 fw-bold" disabled>Requested</button>
+                    {% else %}
+                    <a href="{% url 'send-friend-request' profile_user.username %}"
+                        class="btn btn-primary btn-sm px-4 fw-bold">Add Friend</a>
+                    {% endif %}
+
+                    <button class="btn btn-light btn-sm" data-bs-toggle="dropdown"><i
+                            class="fas fa-ellipsis-h"></i></button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Block</a></li>
+                        <li><a class="dropdown-item" href="#">Report</a></li>
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Desktop Stats -->
+            <div class="stats-row d-none d-md-flex mb-3">
+                <div class="stat-item"><span class="stat-count">{{ post_count }}</span> posts</div>
+                <div class="stat-item"><span class="stat-count">{{ friend_count }}</span> friends</div>
+                <div class="stat-item"><span class="stat-count">{{ total_likes }}</span> likes</div>
+            </div>
+
+            <div class="profile-bio text-center text-md-start">
+                <span class="profile-full-name">{{ profile_user.first_name }} {{ profile_user.last_name }}</span>
+                <p class="mb-1">{{ profile_user.profile.bio|default:"No bio yet." }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Stats -->
+    <div class="stats-row d-flex d-md-none border-top border-bottom">
+        <div class="stat-item py-2">
+            <div class="stat-count">{{ post_count }}</div>
+            <div class="small text-muted">posts</div>
+        </div>
+        <div class="stat-item py-2">
+            <div class="stat-count">{{ friend_count }}</div>
+            <div class="small text-muted">friends</div>
+        </div>
+        <div class="stat-item py-2">
+            <div class="stat-count">{{ total_likes }}</div>
+            <div class="small text-muted">likes</div>
+        </div>
+    </div>
+
+    <!-- Tabs/Navigation -->
+    <ul class="nav nav-tabs mt-md-5" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="posts-tab" data-bs-toggle="tab" href="#posts" role="tab">
+                <i class="fas fa-th me-2"></i> POSTS
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="tagged-tab" data-bs-toggle="tab" href="#tagged" role="tab">
+                <i class="fas fa-user-tag me-2"></i> TAGGED
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Posts Grid -->
+        <div class="tab-pane fade show active" id="posts" role="tabpanel">
+            <div class="post-grid">
+                {% for post in posts %}
+                <a href="{% url 'post-detail' post.pk %}" class="post-item shadow-sm rounded">
+                    {% if post.image %}
+                    <img src="{{ post.image.url }}" alt="{{ post.title }}">
+                    {% else %}
+                    <div class="post-placeholder">
+                        <i class="fas fa-file-alt fa-2x mb-2"></i>
+                        <span class="small fw-bold">{{ post.title|truncatechars:20 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="post-overlay">
+                        <span class="me-3"><i class="fas fa-heart me-1"></i> {{ post.total_likes }}</span>
+                        <span><i class="fas fa-comment me-1"></i> {{ post.comments.count }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="grid-empty text-center w-100 py-5" style="grid-column: span 3;">
+                    <i class="fas fa-camera fa-4x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Posts Yet</h3>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tagged" role="tabpanel">
+            <div class="post-grid">
+                {% for post in tagged_posts %}
+                <a href="{% url 'post-detail' post.pk %}" class="post-item shadow-sm rounded">
+                    {% if post.image %}
+                    <img src="{{ post.image.url }}" alt="{{ post.title }}">
+                    {% else %}
+                    <div class="post-placeholder">
+                        <i class="fas fa-file-alt fa-2x mb-2"></i>
+                        <span class="small fw-bold">{{ post.title|truncatechars:20 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="post-overlay">
+                        <span class="me-3"><i class="fas fa-heart me-1"></i> {{ post.total_likes }}</span>
+                        <span><i class="fas fa-comment me-1"></i> {{ post.comments.count }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="grid-empty text-center w-100 py-5" style="grid-column: span 3;">
+                    <i class="fas fa-id-badge fa-4x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Tagged Posts</h3>
+                    <p class="text-muted">When people tag you in photos, they'll appear here.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

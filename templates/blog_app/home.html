@@ -1,0 +1,134 @@
+<!-- templates/blog_app/home.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar with Categories -->
+    <!-- Main Content -->
+    <div class="col-12 col-lg-8 offset-lg-2">
+        <div class="card mb-4 border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-body py-2">
+                <form method="GET" action="{% url 'blog-home' %}" class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <i class="fas fa-search text-muted"></i>
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control border-0 shadow-none" name="q"
+                            placeholder="Search posts..." value="{{ request.GET.q }}">
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary rounded-pill px-4" type="submit">Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if request.GET.q %}
+        <h2 class="h4 mb-4 fw-bold">Search Results for "{{ request.GET.q }}"</h2>
+        {% elif request.GET.category %}
+        {% for cat in categories %}
+        {% if cat.id|stringformat:"s" == request.GET.category %}
+        <h2 class="h4 mb-4 fw-bold">Category: {{ cat.name }}</h2>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <h1 class="h3 mb-4 fw-bold">Feed</h1>
+        {% endif %}
+
+        {% if posts %}
+        {% for post in posts %}
+        <div class="card mb-4 border-0 shadow-sm rounded-4 overflow-hidden">
+            {% if post.image %}
+            <a href="{% url 'post-detail' post.pk %}" class="d-block overflow-hidden">
+                <img src="{{ post.image.url }}" class="card-img-top feed-post-img" alt="{{ post.title }}">
+            </a>
+            {% endif %}
+            <div class="card-body p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h2 class="h5 fw-bold mb-0">
+                        <a href="{% url 'post-detail' post.pk %}" class="text-decoration-none text-dark-mode">{{ post.title }}</a>
+                    </h2>
+                    {% if post.category %}
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-3">{{ post.category.name }}</span>
+                    {% endif %}
+                </div>
+
+                <p class="card-text text-muted small mb-3">
+                    {{ post.content|truncatewords:40|safe }}
+                </p>
+
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                    <div class="author-info d-flex align-items-center overflow-hidden">
+                        <img src="{{ post.author.profile.image.url }}" alt="{{ post.author.username }}"
+                            class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                        <div class="d-flex flex-column">
+                            <a href="{% url 'profile-user' post.author.username %}"
+                                class="text-dark-mode text-decoration-none fw-bold small">{{ post.author.username }}</a>
+                            <small class="text-muted" style="font-size: 0.7rem;">{{ post.date_posted|timesince }}
+                                ago</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-link p-0 text-decoration-none like-btn d-flex align-items-center"
+                            data-post-id="{{ post.pk }}" style="color: inherit;">
+                            <i
+                                class="fas fa-heart me-1 {% if user in post.likes.all %}text-danger{% else %}text-muted{% endif %}"></i>
+                            <span class="like-count small fw-bold">{{ post.total_likes }}</span>
+                        </button>
+                        <a href="{% url 'post-detail' post.pk %}#comments"
+                            class="text-decoration-none d-flex align-items-center">
+                            <i class="fas fa-comment text-muted me-1"></i>
+                            <span class="small fw-bold text-muted">{{ post.comments.count }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="alert alert-info border-0 rounded-4 shadow-sm text-center py-5">
+            <i class="fas fa-ghost fa-3x mb-3 opacity-50"></i>
+            <p class="mb-0 fw-bold">No posts found.</p>
+            {% if not user.is_authenticated %}<a href="{% url 'login' %}"
+                class="btn btn-primary mt-3 rounded-pill px-4">Login to get started</a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function () {
+        $('.like-btn').click(function (e) {
+            e.preventDefault();
+            var postId = $(this).data('post-id');
+            var button = $(this);
+
+            $.ajax({
+                url: '/post/' + postId + '/like/',
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function (response) {
+                    if (response.liked) {
+                        button.find('i').removeClass('text-muted').addClass('text-danger');
+                    } else {
+                        button.find('i').removeClass('text-danger').addClass('text-muted');
+                    }
+                    button.find('.like-count').text(response.total_likes);
+                },
+                error: function (xhr, errmsg, err) {
+                    console.log(xhr.status + ": " + xhr.responseText);
+                    // Optional: redirect to login if 403/401, or show alert
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        window.location.href = "{% url 'login' %}";
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

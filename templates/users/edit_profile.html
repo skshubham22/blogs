@@ -1,0 +1,41 @@
+<!-- templates/users/edit_profile.html -->
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="card-body">
+                    <h2 class="text-center mb-4 font-weight-light">Edit Profile</h2>
+
+                    <div class="d-flex align-items-center mb-4 p-3 bg-light rounded shadow-sm">
+                        <img src="{{ user.profile.image.url }}" class="rounded-circle me-3 border" width="60"
+                            height="60" style="object-fit: cover;">
+                        <div>
+                            <h5 class="mb-0 fw-bold">{{ user.username }}</h5>
+                            <button class="btn btn-link p-0 text-primary small text-decoration-none fw-bold"
+                                onclick="document.getElementById('id_image').click();">Change Profile Photo</button>
+                        </div>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ u_form|crispy }}
+                        </div>
+                        <div class="mb-3">
+                            {{ p_form|crispy }}
+                        </div>
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary fw-bold">Done</button>
+                            <a href="{% url 'profile' %}" class="btn btn-link text-muted">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
