@@ -79,6 +79,24 @@ A premium, feature-rich social blogging application built with **Django 6.0**, *
    python populate_full_blog.py
    ```
 
+## 🌐 Hosting on Render (Public Deployment)
+
+To host your blog permanently for the whole world to see:
+
+1.  **Preparation**: I have already configured `settings.py` for WhiteNoise and added a `Procfile`.
+2.  **Connect GitHub**: Go to [Render.com](https://render.com/) and create a free account.
+3.  **Create Web Service**:
+    *   Click **New +** -> **Web Service**.
+    *   Connect your `blogverse-django` repository.
+4.  **Settings**:
+    *   **Build Command**: `pip install -r requirements.txt; python manage.py migrate; python manage.py collectstatic --noinput`
+    *   **Start Command**: `gunicorn blog_project.wsgi`
+5.  **Environment Variables**:
+    *   Add `SECRET_KEY`: (Pick a random long string).
+    *   Add `DEBUG`: `False`.
+
+Render will automatically provide you with a public URL like `https://blogverse-xxxx.onrender.com`.
+
 ## 🌐 Hosting on Other Devices (Mobile/Tab)
 
 To see your blog on your phone or another laptop:
@@ -127,4 +145,4 @@ Access at: `http://127.0.0.1:8000/`
 - **Images missing?**: Run `python populate_full_blog.py` to generate the `media/` folder content.
 
 ---
-*Developed with ❤️ by Antigravity*
+*Developed  ❤️ by shubham yadav*
