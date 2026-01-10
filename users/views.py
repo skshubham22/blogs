@@ -173,9 +173,12 @@ def settings_view(request):
     return render(request, 'users/settings.html')
 
 def validate_username(request):
-    username = request.GET.get('username', None)
+    username = (request.GET.get('username') or '').strip()
+    if not username:
+        return JsonResponse({'is_taken': False})
+    is_taken = User.objects.filter(username__iexact=username).exists()
     data = {
-        'is_taken': User.objects.filter(username__iexact=username).exists()
+        'is_taken': is_taken
     }
     if data['is_taken']:
         data['error_message'] = 'This username is already taken. Please choose another.'
