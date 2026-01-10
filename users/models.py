@@ -14,8 +14,9 @@ class Profile(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         
-        # Don't try to resize the default image (it might not be on the server)
-        if self.image.name == 'default.jpg':
+        # Don't try to resize the default image or if the file doesn't exist on the server
+        import os
+        if self.image.name == 'default.jpg' or not os.path.exists(self.image.path):
             return
 
         try:
@@ -24,8 +25,8 @@ class Profile(models.Model):
                 output_size = (300, 300)
                 img.thumbnail(output_size)
                 img.save(self.image.path)
-        except (FileNotFoundError, ValueError, OSError):
-            # Skip resizing if file not found or if it's a non-standard file type
+        except Exception:
+            # Catch all PIL errors or Permission errors on some servers
             pass
 
 class Notification(models.Model):
