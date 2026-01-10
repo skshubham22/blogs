@@ -14,12 +14,19 @@ class Profile(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         
-        img = Image.open(self.image.path)
-        
-        if img.height > 300 or img.width > 300:
-            output_size = (300, 300)
-            img.thumbnail(output_size)
-            img.save(self.image.path)
+        # Don't try to resize the default image (it might not be on the server)
+        if self.image.name == 'default.jpg':
+            return
+
+        try:
+            img = Image.open(self.image.path)
+            if img.height > 300 or img.width > 300:
+                output_size = (300, 300)
+                img.thumbnail(output_size)
+                img.save(self.image.path)
+        except (FileNotFoundError, ValueError, OSError):
+            # Skip resizing if file not found or if it's a non-standard file type
+            pass
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = (
