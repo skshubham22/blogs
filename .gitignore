@@ -12,6 +12,3 @@ media/
 venv/
 env/
 .env
-
-# Static Files
-staticfiles/

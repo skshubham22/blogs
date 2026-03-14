@@ -12,8 +12,12 @@
                 <div class="list-group list-group-flush text-center font-weight-light">
                     <a href="{% url 'edit-profile' %}" class="list-group-item list-group-item-action py-3">Edit
                         Profile</a>
-                    <a href="{% url 'logout' %}"
-                        class="list-group-item list-group-item-action py-3 text-danger fw-bold">Log Out</a>
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="list-group-item list-group-item-action py-3 text-danger fw-bold w-100 border-0">Log
+                            Out</button>
+                    </form>
                     <a href="{% url 'profile' %}" class="list-group-item list-group-item-action py-3">Cancel</a>
                 </div>
             </div>

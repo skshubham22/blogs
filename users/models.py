@@ -14,20 +14,12 @@ class Profile(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         
-        # Don't try to resize the default image or if the file doesn't exist on the server
-        import os
-        if self.image.name == 'default.jpg' or not os.path.exists(self.image.path):
-            return
-
-        try:
-            img = Image.open(self.image.path)
-            if img.height > 300 or img.width > 300:
-                output_size = (300, 300)
-                img.thumbnail(output_size)
-                img.save(self.image.path)
-        except Exception:
-            # Catch all PIL errors or Permission errors on some servers
-            pass
+        img = Image.open(self.image.path)
+        
+        if img.height > 300 or img.width > 300:
+            output_size = (300, 300)
+            img.thumbnail(output_size)
+            img.save(self.image.path)
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = (

@@ -12,23 +12,23 @@ print("Checking models...")
 # Check blog_app models
 try:
     from blog_app.models import Category, Post, Comment
-    print("✓ blog_app.models contains: Category, Post, Comment")
+    print("[v] blog_app.models contains: Category, Post, Comment")
 except ImportError as e:
-    print(f"✗ blog_app.models import error: {e}")
+    print(f"[x] blog_app.models import error: {e}")
 
 # Check for Profile in blog_app (should NOT be there)
 try:
     from blog_app.models import Profile
-    print("✗ ERROR: Profile found in blog_app.models - remove it!")
+    print("[x] ERROR: Profile found in blog_app.models - remove it!")
 except ImportError:
-    print("✓ Profile NOT in blog_app.models - good!")
+    print("[v] Profile NOT in blog_app.models - good!")
 
 # Check users models
 try:
     from users.models import Profile
-    print("✓ users.models contains: Profile")
+    print("[v] users.models contains: Profile")
 except ImportError as e:
-    print(f"✗ users.models import error: {e}")
+    print(f"[x] users.models import error: {e}")
 
 # List all models
 from django.apps import apps

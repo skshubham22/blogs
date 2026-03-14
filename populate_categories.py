@@ -8,7 +8,8 @@ from blog_app.models import Category
 
 categories = [
     'Technology', 'Lifestyle', 'Travel', 'Food', 'Health', 'Science', 
-    'Education', 'Business', 'Entertainment', 'Sports'
+    'Education', 'Business', 'Entertainment', 'Sports',
+    'world', 'school', 'village', 'enviroment', 'child', 'social media'
 ]
 
 for name in categories:

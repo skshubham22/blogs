@@ -30,50 +30,37 @@
 
 {% block extra_js %}
 <script>
-    const usernameField = document.querySelector('#id_username');
+    const usernameField = document.querySelector('#div_id_username input');
     const submitBtn = document.querySelector('button[type="submit"]');
 
     if (usernameField) {
-        usernameField.addEventListener('input', (e) => {
-            const username = e.target.value.trim();
-            const existingError = document.getElementById('username-error');
+        usernameField.addEventListener('keyup', (e) => {
+            const username = e.target.value;
+            if (username.length > 0) {
+                fetch(`{% url "validate-username" %}?username=${username}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const existingError = document.getElementById('username-error');
+                        if (existingError) {
+                            existingError.remove();
+                        }
 
-            if (existingError) {
-                existingError.remove();
-            }
-
-            if (username.length === 0) {
-                usernameField.classList.remove('is-invalid', 'is-valid');
-                submitBtn.disabled = false;
-                return;
-            }
-
-            // Simple debounce or instant check
-            fetch(`{% url "validate-username" %}?username=${encodeURIComponent(username)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.is_taken) {
-                        usernameField.classList.remove('is-valid');
-                        usernameField.classList.add('is-invalid');
-
-                        if (!document.getElementById('username-error')) {
+                        if (data.is_taken) {
+                            usernameField.classList.add('is-invalid');
                             const errorDiv = document.createElement('div');
                             errorDiv.id = 'username-error';
                             errorDiv.classList.add('invalid-feedback');
                             errorDiv.style.display = 'block';
                             errorDiv.innerHTML = `<strong>${data.error_message}</strong>`;
                             usernameField.parentNode.appendChild(errorDiv);
+                            submitBtn.disabled = true;
+                        } else {
+                            usernameField.classList.remove('is-invalid');
+                            usernameField.classList.add('is-valid');
+                            submitBtn.disabled = false;
                         }
-                        submitBtn.disabled = true;
-                    } else {
-                        usernameField.classList.remove('is-invalid');
-                        usernameField.classList.add('is-valid');
-                        submitBtn.disabled = false;
-                    }
-                })
-                .catch(err => {
-                    console.error('Validation error:', err);
-                });
+                    });
+            }
         });
     }
 </script>
