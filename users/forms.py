@@ -7,9 +7,9 @@ from .models import Profile
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField()
     
-    class Meta:
+    class Meta(UserCreationForm.Meta):
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = UserCreationForm.Meta.fields + ('email',)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
