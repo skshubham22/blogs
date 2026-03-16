@@ -21,199 +21,88 @@
 <body>
     <!-- Navigation -->
     {% if user.is_authenticated %}
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <nav class="navbar navbar-expand-lg fixed-top shadow-sm">
         <div class="container">
             {% if request.path != '/' %}
             <a href="{% if request.GET.source == 'search' and request.session.last_user_search %}{% url 'search-users' %}?q={{ request.session.last_user_search }}{% else %}javascript:history.back(){% endif %}"
-                id="back-arrow" class="btn btn-link p-0 me-3">
-                <i class="fas fa-arrow-left"></i>
+                id="back-arrow" class="btn btn-link p-0 me-3 text-decoration-none">
+                <i class="fas fa-arrow-left fs-5"></i>
             </a>
             {% endif %}
-            <button id="theme-toggle" class="btn btn-link p-0 me-3" title="Change Theme">
-                <i class="fas fa-palette" id="theme-icon"></i>
-            </button>
-            <a class="navbar-brand" href="{% url 'blog-home' %}">
-                <i class="fas fa-blog"></i> <span class="d-none d-sm-inline">Blogs</span>
+            
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'blog-home' %}">
+                <div class="brand-icon me-2" style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <span class="fw-bold">BlogVerse</span>
             </a>
-            <!-- Chat Dropdown Trigger -->
-            <div class="dropdown me-3 order-lg-last">
-                <a href="javascript:void(0)" class="position-relative text-decoration-none" id="chatDropdownTrigger"
-                    data-bs-toggle="dropdown" aria-expanded="false" onclick="fetchConversations()">
-                    <i class="fas fa-paper-plane fs-5"></i>
-                    <span id="chat-badge"
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                        style="font-size: 0.6rem;">
-                        NEW
-                    </span>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end shadow p-0" aria-labelledby="chatDropdownTrigger"
-                    style="width: 320px; max-height: 450px; overflow-y: auto;" id="chatDropdownMenu">
-                    <li class="p-2 border-bottom d-flex justify-content-between align-items-center dropdown-header"
-                        style="background-color: var(--search-bg) !important;">
-                        <h6 class="mb-0 fw-bold">Messages</h6>
-                        <a href="{% url 'inbox' %}" class="small text-decoration-none">See All</a>
-                    </li>
-                    <div id="chat-dropdown-list">
-                        <!-- JS will populate this -->
-                        <li class="p-4 text-center text-muted">
-                            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-                            <br><small>Loading conversations...</small>
-                        </li>
-                    </div>
-                </ul>
-            </div>
 
-            <!-- Floating Chat Box Container -->
-            <div id="floating-chat-box" class="card shadow d-none"
-                style="position: fixed; bottom: 0; right: 20px; width: 320px; height: 400px; z-index: 1050; border-radius: 10px 10px 0 0;">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2"
-                    style="cursor: pointer;" onclick="toggleChatBox()">
-                    <div class="d-flex align-items-center">
-                        <img id="floating-chat-header-img" src="" class="rounded-circle me-2" width="30" height="30"
-                            style="object-fit: cover;">
-                        <span id="floating-chat-header-username" class="fw-bold">Username</span>
-                    </div>
-                    <div>
-                        <button class="btn btn-sm text-white p-0 me-2"><i class="fas fa-minus"></i></button>
-                        <button class="btn btn-sm text-white p-0" onclick="event.stopPropagation(); closeChatBox()"><i
-                                class="fas fa-times"></i></button>
-                    </div>
-                </div>
-                <div class="card-body p-0 d-flex flex-column" style="height: 350px;">
-                    <div id="floating-chat-messages-area" class="flex-grow-1 p-3"
-                        style="overflow-y: auto; background-color: #f8f9fa;">
-                        <!-- Messages go here -->
-                    </div>
-                    <div class="p-2 border-top bg-white">
-                        <div class="input-group">
-                            <input type="text" id="floating-chat-input"
-                                class="form-control form-control-sm border-0 bg-light" placeholder="Type a message..."
-                                style="box-shadow: none;">
-                            <button class="btn btn-primary btn-sm rounded-circle ms-2" onclick="sendChatMessage()"
-                                style="width: 35px; height: 35px;">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notifications Dropdown -->
-            <div class="dropdown me-3 order-lg-last">
-                <a href="#" class="position-relative text-decoration-none" id="notificationMenu"
-                    data-bs-toggle="dropdown">
-                    <i class="fas fa-bell fs-5"></i>
-                    <span id="notification-badge"
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_notifications_count == 0 %}d-none{% endif %}"
-                        style="font-size: 0.6rem;">
-                        {{ unread_notifications_count }}
-                    </span>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationMenu"
-                    style="width: 300px; max-height: 400px; overflow-y: auto;">
-                    <li>
-                        <h6 class="dropdown-header d-flex justify-content-between align-items-center">
-                            Notifications
-                        </h6>
-                    </li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <div id="notification-list">
-                        {% for notification in latest_notifications %}
-                        <li>
-                            <a class="dropdown-item {% if not notification.is_read %}bg-light fw-bold{% endif %} border-bottom py-2"
-                                href="{% url 'mark-notification-read' notification.pk %}">
-                                <div class="d-flex align-items-center">
-                                    <img src="{{ notification.sender.profile.image.url }}" class="rounded-circle me-2"
-                                        width="30" height="30">
-                                    <div style="white-space: normal;">
-                                        <p class="mb-0 small" style="line-height: 1.2;">{{ notification.content
-                                            }}</p>
-                                        <small class="text-muted" style="font-size: 0.7rem;">
-                                            {{ notification.created_at|timesince }} ago
-                                        </small>
-                                    </div>
-                                </div>
-                            </a>
-                        </li>
-                        {% empty %}
-                        <li class="text-center py-3 text-muted small">No notifications</li>
-                        {% endfor %}
-                    </div>
-                </ul>
-            </div>
-
-            <!-- User Profile Dropdown -->
-            <div class="dropdown order-lg-last">
-                <button class="btn dropdown-toggle d-flex align-items-center p-1 px-2 rounded-pill shadow-sm border-0"
-                    type="button" id="userMenu" data-bs-toggle="dropdown">
-                    <img src="{{ user.profile.image.url }}" alt="Profile" class="rounded-circle" width="28" height="28">
-                    <span class="d-none d-md-inline ms-2 small fw-bold">{{ user.username }}</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                    <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <li>
-                        <form action="{% url 'logout' %}" method="post" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="dropdown-item">Logout</button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Mobile Toggler -->
-            <button class="navbar-toggler ms-2 order-lg-last" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <!-- Navbar Links & Search -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto align-items-lg-center">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'blog-home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'blog-about' %}">About</a>
+                        <a class="nav-link px-3" href="{% url 'blog-home' %}">Home</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            Categories
+                        <a class="nav-link dropdown-toggle px-3" href="#" role="button" data-bs-toggle="dropdown">
+                            Explore
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'blog-home' %}">All Categories</a></li>
+                        <ul class="dropdown-menu border-0 shadow-lg mt-2">
+                            <li><a class="dropdown-item py-2" href="{% url 'blog-home' %}">All Posts</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             {% for category in categories %}
-                            <li>
-                                <a class="dropdown-item" href="{% url 'blog-home' %}?category={{ category.id }}">
-                                    {{ category.name }}
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item py-2" href="{% url 'blog-home' %}?category={{ category.id }}">{{ category.name }}</a></li>
                             {% endfor %}
                         </ul>
                     </li>
-                    <!-- User Search Form -->
-                    <li class="nav-item ms-lg-4 position-relative">
-                        <form class="d-flex" action="{% url 'search-users' %}" method="GET" id="user-search-form">
-                            <div class="input-group">
-                                <input class="form-control border-0 rounded-start-pill ps-3" type="search" name="q"
-                                    placeholder="Find users..." aria-label="Search Users" autocomplete="off"
-                                    id="user-search-input" style="min-width: 200px;">
-                                <button class="btn border-0 rounded-end-pill pe-3" type="submit">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </form>
-                        <!-- Search Dropdown Results -->
-                        <div id="search-results-dropdown" class="dropdown-menu shadow w-100"
-                            style="display: none; top: 100%;">
-                        </div>
-                    </li>
                 </ul>
+
+                <div class="d-flex align-items-center gap-3">
+                    <button id="theme-toggle" class="btn btn-link p-2 text-decoration-none" title="Toggle Theme">
+                        <i class="fas fa-palette fs-5" id="theme-icon"></i>
+                    </button>
+
+                    <!-- Chat Trigger -->
+                    <div class="dropdown">
+                        <a href="#" class="nav-icon position-relative" id="chatDropdownTrigger" data-bs-toggle="dropdown" onclick="fetchConversations()">
+                            <i class="fas fa-paper-plane fs-5"></i>
+                            <span id="chat-badge" class="position-absolute translate-middle badge rounded-pill bg-danger d-none" style="top: 0; right: -10px; font-size: 0.5rem; padding: 0.35em 0.65em;">
+                                &nbsp;
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 mt-3" style="width: 320px; overflow: hidden;" id="chatDropdownMenu">
+                            <li class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                                <span class="fw-bold">Messages</span>
+                                <a href="{% url 'inbox' %}" class="small text-decoration-none">View Inbox</a>
+                            </li>
+                            <div id="chat-dropdown-list" style="max-height: 350px; overflow-y: auto;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </ul>
+                    </div>
+
+                    <!-- User Profile -->
+                    <div class="dropdown">
+                        <button class="btn d-flex align-items-center gap-2 p-1 pe-3 border rounded-pill hover-shadow" data-bs-toggle="dropdown">
+                            <img src="{{ user.profile.image.url }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
+                            <span class="small fw-semibold d-none d-md-inline">{{ user.username }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2">
+                            <li><a class="dropdown-item py-2" href="{% url 'profile' %}"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'settings' %}"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{% url 'logout' %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item py-2 text-danger"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
