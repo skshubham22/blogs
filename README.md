@@ -94,10 +94,6 @@ To see your blog on your phone or another laptop:
 3. **Access**:
    On your phone's browser, go to `http://YOUR_IP:8000`.
 
-## 📖 Documentation Guides
-For more detailed information, refer to these custom guides:
-- [**Full Project Blueprint**](blogging_project_sk.md): Contains the complete logic and code for every feature implemented.
-- [**Command Quick-Start**](all_command.md): A simple, step-by-step list of commands for new device setup.
 
 ## 🚀 Usage
 
@@ -107,9 +103,7 @@ python manage.py runserver
 ```
 Access at: `http://127.0.0.1:8000/`
 
-### Admin Credentials
-- **Username:** `admin`
-- **Password:** `admin`
+
 
 ## 📂 Project Highlights
 - **`blog_app/`**: Core logic with custom model properties and permission-based views.
