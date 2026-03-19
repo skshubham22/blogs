@@ -64,6 +64,34 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+#user-search-form {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 0 5px;
+    transition: all 0.3s ease;
+}
+
+#user-search-form:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    background: var(--card-bg);
+}
+
+#user-search-results {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+#user-search-results .dropdown-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+#user-search-results .dropdown-item:last-child {
+    border-bottom: none;
+}
+
 .navbar-brand {
     font-size: 1.5rem;
     letter-spacing: -0.02em;

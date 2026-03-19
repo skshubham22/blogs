@@ -42,3 +42,17 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'{self.sender.username} -> {self.user.username} ({self.notification_type})'
+
+class UserActivity(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    action = models.CharField(max_length=255)
+    metadata = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "User Activities"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} - {self.action} at {self.created_at}'

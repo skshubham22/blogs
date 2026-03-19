@@ -120,6 +120,8 @@ def api_get_messages(request, username):
     
     return JsonResponse({'messages': data})
 
+from users.models import Notification, UserActivity
+
 @login_required
 def api_send_message(request, username):
     if request.method == 'POST':
@@ -127,6 +129,15 @@ def api_send_message(request, username):
         content = request.POST.get('body') 
         if content:
             msg = Message.objects.create(sender=request.user, receiver=other_user, content=content)
+            
+            # Log message activity
+            UserActivity.objects.create(
+                user=request.user,
+                action='send_message',
+                metadata={'receiver': other_user.username, 'content_preview': content[:50]},
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
             return JsonResponse({
                 'status': 'ok',
                 'body': msg.content,

@@ -20,10 +20,9 @@
 
 <body>
     <!-- Navigation -->
-    {% if user.is_authenticated %}
     <nav class="navbar navbar-expand-lg fixed-top shadow-sm">
         <div class="container">
-            {% if request.path != '/' %}
+            {% if request.path != '/' and user.is_authenticated %}
             <a href="{% if request.GET.source == 'search' and request.session.last_user_search %}{% url 'search-users' %}?q={{ request.session.last_user_search }}{% else %}javascript:history.back(){% endif %}"
                 id="back-arrow" class="btn btn-link p-0 me-3 text-decoration-none">
                 <i class="fas fa-arrow-left fs-5"></i>
@@ -42,6 +41,7 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
+                {% if user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link px-3" href="{% url 'blog-home' %}">Home</a>
@@ -59,6 +59,20 @@
                         </ul>
                     </li>
                 </ul>
+                
+                <!-- User Search -->
+                <form id="user-search-form" class="d-none d-lg-flex mx-auto position-relative" style="max-width: 300px; width: 100%;">
+                    <div class="input-group">
+                        <span class="input-group-text border-0 bg-transparent text-muted ps-3">
+                            <i class="fas fa-user-plus small"></i>
+                        </span>
+                        <input type="text" id="user-search-input" class="form-control border-0 bg-transparent ps-0 shadow-none" 
+                               placeholder="Find friends..." style="font-size: 0.85rem;">
+                    </div>
+                    <div id="user-search-results" class="dropdown-menu border-0 shadow-lg mt-2 w-100" style="display: none;">
+                        <!-- Results populated by JS -->
+                    </div>
+                </form>
 
                 <div class="d-flex align-items-center gap-3">
                     <button id="theme-toggle" class="btn btn-link p-2 text-decoration-none" title="Toggle Theme">
@@ -103,10 +117,21 @@
                         </ul>
                     </div>
                 </div>
+                {% else %}
+                <ul class="navbar-nav ms-auto align-items-center gap-3">
+                    <li class="nav-item">
+                        <a class="nav-link px-3 fw-semibold" href="{% url 'login' %}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary px-4 rounded-pill shadow-sm fw-bold" href="{% url 'register' %}">
+                            Join Free <i class="fas fa-arrow-right ms-2 small"></i>
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
         </div>
     </nav>
-    {% endif %}
 
     <!-- Messages -->
     <div class="container mt-3">
@@ -124,6 +149,41 @@
     <main class="container my-4">
         {% block content %}{% endblock %}
     </main>
+
+    {% if user.is_authenticated %}
+    <!-- Floating Chat Box -->
+    <div id="floating-chat-box" class="card shadow-lg d-none" style="position: fixed; bottom: 85px; right: 20px; width: 320px; z-index: 1050; border: none; border-radius: 20px; overflow: hidden; height: 400px; transition: all 0.3s ease;">
+        <div class="card-header border-0 d-flex justify-content-between align-items-center py-3" style="background: var(--primary-gradient); color: white;">
+            <div class="d-flex align-items-center">
+                <div class="position-relative me-2">
+                    <img id="floating-chat-header-img" src="" class="rounded-circle border border-2 border-white" width="35" height="35" style="object-fit: cover;">
+                    <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle"></span>
+                </div>
+                <div>
+                    <h6 id="floating-chat-header-username" class="mb-0 fw-bold small">Chat</h6>
+                    <small class="opacity-75" style="font-size: 0.65rem;">Active now</small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm text-white p-0" onclick="toggleChatBox()"><i class="fas fa-minus"></i></button>
+                <button class="btn btn-sm text-white p-0" onclick="closeChatBox()"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="card-body p-0 d-flex flex-column bg-light" style="height: calc(100% - 65px);">
+            <div id="floating-chat-messages-area" class="flex-grow-1 p-3" style="overflow-y: auto; background-color: #f8f9fa;">
+                <!-- Messages populated by JS -->
+            </div>
+            <div class="p-2 bg-white border-top">
+                <div class="input-group">
+                    <input type="text" id="floating-chat-input" class="form-control border-0 bg-light shadow-none rounded-start-pill px-3" placeholder="Type a message..." style="font-size: 0.85rem;">
+                    <button class="btn btn-primary rounded-end-pill px-3" onclick="sendChatMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if user.is_authenticated %}
     <!-- Footer -->
@@ -209,6 +269,58 @@
             currentThemeIndex = (currentThemeIndex + 1) % themes.length;
             setTheme(themes[currentThemeIndex]);
         });
+
+        // User Search Logic
+        const searchInput = document.getElementById('user-search-input');
+        const searchResults = document.getElementById('user-search-results');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                if (query.length < 1) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                fetch(`${USER_SEARCH_API_URL}?q=${query}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.users && data.users.length > 0) {
+                            let html = '';
+                            data.users.forEach(u => {
+                                html += `
+                                    <li>
+                                        <div class="dropdown-item d-flex align-items-center justify-content-between py-2">
+                                            <div class="d-flex align-items-center" onclick="window.location.href='/user/${u.username}/'" style="cursor: pointer;">
+                                                <img src="${u.image}" class="rounded-circle me-3" width="35" height="35" style="object-fit: cover;">
+                                                <div>
+                                                    <p class="mb-0 fw-bold small">${u.username}</p>
+                                                    <small class="text-muted" style="font-size: 0.7rem;">${u.follower_count} followers</small>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1" onclick="openChatBox('${u.username}', '${u.image}')" style="font-size: 0.7rem;">
+                                                Message
+                                            </button>
+                                        </div>
+                                    </li>
+                                `;
+                            });
+                            searchResults.innerHTML = html;
+                            searchResults.style.display = 'block';
+                        } else {
+                            searchResults.innerHTML = '<li class="p-3 text-center text-muted small">No users found</li>';
+                            searchResults.style.display = 'block';
+                        }
+                    });
+            });
+
+            // Close results on click outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
 
         // Auto-refresh the page when navigating back to ensure fresh data
         window.addEventListener("pageshow", function (event) {
@@ -374,37 +486,6 @@
                 });
             }
             list.innerHTML = html;
-        }
-
-        const searchInput = document.getElementById('user-search-input');
-        const searchDropdown = document.getElementById('search-results-dropdown');
-
-        if (searchInput) {
-            searchInput.addEventListener('focus', showSearchHistory);
-            searchInput.addEventListener('click', showSearchHistory);
-
-            document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
-                    searchDropdown.style.display = 'none';
-                }
-            });
-        }
-
-        function showSearchHistory() {
-            fetch(USER_SEARCH_API_URL)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.history && data.history.length > 0) {
-                        let html = '<h6 class="dropdown-header">Recent Searches</h6>';
-                        data.history.forEach(query => {
-                            html += `<li><a class="dropdown-item py-2" href="{% url 'search-users' %}?q=${encodeURIComponent(query)}&source=search"><i class="fas fa-history me-2 text-muted"></i>${query}</a></li>`;
-                        });
-                        searchDropdown.innerHTML = html;
-                        searchDropdown.style.display = 'block';
-                    } else {
-                        searchDropdown.style.display = 'none';
-                    }
-                });
         }
 
         function checkUnread() {

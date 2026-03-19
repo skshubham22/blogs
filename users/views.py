@@ -1,6 +1,7 @@
 # users/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.models import User
@@ -8,8 +9,11 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django.utils.timesince import timesince
+
 from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm, CustomLoginForm
-from .models import Profile, Notification
+from .models import Profile, Notification, UserActivity
 from chat.models import Friendship
 from django.db.models import Q
 from blog_app.models import Post
@@ -54,6 +58,13 @@ def api_get_notifications(request):
 def search_users(request):
     query = request.GET.get('q')
     if query:
+        # Log search activity
+        UserActivity.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            action='user_search',
+            metadata={'query': query},
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
         # Maintain history list
         history = request.session.get('search_history', [])
         if query in history:
@@ -72,20 +83,29 @@ def search_users(request):
 def api_user_search(request):
     query = request.GET.get('q', '')
     if query:
+        # Log search activity
+        UserActivity.objects.create(
+            user=request.user,
+            action='api_user_search',
+            metadata={'query': query},
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
         users = User.objects.filter(username__icontains=query)[:5]
         data = []
         for u in users:
             data.append({
                 'username': u.username,
-                'image': u.profile.image.url
+                'image': u.profile.image.url,
+                'follower_count': Friendship.objects.filter(
+                    (Q(user1=u) | Q(user2=u)),
+                    status='accepted'
+                ).count()
             })
         return JsonResponse({'users': data})
     
     # If no query, return history
     history = request.session.get('search_history', [])
     return JsonResponse({'history': history})
-from chat.models import Friendship
-from django.db.models import Q
 
 def register(request):
     if request.method == 'POST':
@@ -94,7 +114,7 @@ def register(request):
             user = form.save()
             username = form.cleaned_data.get('username')
             messages.success(request, f'Account created for {username}! You have been logged in automatically.')
-            login(request, user)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect('blog-home')
     else:
         form = UserRegisterForm()

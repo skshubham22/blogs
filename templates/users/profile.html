@@ -220,7 +220,7 @@
                     <a href="{% url 'settings' %}" class="btn btn-light btn-sm"><i class="fas fa-cog"></i></a>
                     {% else %}
                     <!-- Message Button (Always available) -->
-                    <a href="{% url 'direct-message' profile_user.username %}"
+                    <a href="javascript:void(0)" onclick="openChatBox('{{ profile_user.username }}', '{{ profile_user.profile.image.url }}')"
                         class="btn btn-outline-primary btn-sm px-4 fw-bold">Message</a>
 
                     <!-- Friend Actions -->
