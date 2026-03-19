@@ -13,4 +13,4 @@ python manage.py migrate
 
 # TEMPORARY: Reset admin password for Render deployment
 # Remove this after successful login
-python manage.py shell -c "from django.contrib.auth.models import User; u, created = User.objects.get_or_create(username='admin', defaults={'is_superuser': True, 'is_staff': True}); u.set_password('admin123'); u.is_superuser=True; u.is_staff=True; u.save(); print('Admin user created/updated')"
+python manage.py shell -c "from django.contrib.auth.models import User; names = ['admin', 'shubham']; [ (u := User.objects.get_or_create(username=n, defaults={'is_superuser': True, 'is_staff': True})[0], u.set_password('admin123'), setattr(u, 'is_superuser', True), setattr(u, 'is_staff', True), u.save()) for n in names ]; print('Admin users updated')"
